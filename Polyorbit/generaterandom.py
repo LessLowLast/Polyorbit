@@ -19,6 +19,14 @@ def get_user_input():
         except ValueError:
             print("Please enter valid integer values.")
 
+def calculate_frequency(size, is_planet):
+    if is_planet:
+        # For planets: size range 20-50, frequency range 50-600
+        return 600 - ((size - 20) / 30) * 550
+    else:
+        # For moons: size range 1-15, frequency range 100-800
+        return 800 - ((size - 1) / 14) * 700
+
 def generate_random_settings(file_name='settings.ini'):
     min_planets, max_planets, min_moons, max_moons = get_user_input()
     
@@ -32,7 +40,7 @@ def generate_random_settings(file_name='settings.ini'):
     for i in range(1, num_planets + 1):
         planet_section = f'Planet{i}'
         size = random.randint(20, 50)  # Planets have a minimum size of 20
-        frequency = random.uniform(50, 600)
+        frequency = calculate_frequency(size, True)
         distance = previous_planet_distance + random.randint(50, 100)
         previous_planet_distance = distance
         num_moons = random.randint(min_moons, max_moons)
@@ -40,7 +48,7 @@ def generate_random_settings(file_name='settings.ini'):
 
         config[planet_section] = {
             'Size': str(size),
-            'Frequency': str(frequency),
+            'Frequency': f"{frequency:.2f}",
             'Distance': str(distance),
             'NumberOfMoons': str(num_moons),
             'SoundFile': sound_file
@@ -50,14 +58,14 @@ def generate_random_settings(file_name='settings.ini'):
         for j in range(1, num_moons + 1):
             moon_section = f'{planet_section}Moon{j}'
             moon_size = random.randint(1, 15)  # Moons have a maximum size of 15
-            moon_frequency = random.uniform(100, 800)
+            moon_frequency = calculate_frequency(moon_size, False)
             moon_distance = previous_moon_distance + random.randint(moon_size, 20)
             previous_moon_distance = moon_distance
             moon_sound_file = ""
 
             config[moon_section] = {
                 'Size': str(moon_size),
-                'Frequency': str(moon_frequency),
+                'Frequency': f"{moon_frequency:.2f}",
                 'Distance': str(moon_distance),
                 'SoundFile': moon_sound_file
             }
