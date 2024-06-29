@@ -7,3 +7,7 @@ Clone anywhere or download the polyorbit folder, or, just download demoini.py an
 2. Run generaterandom.py
 3. Edit the settings file if you want.
 4. Run demoini.py
+
+generaterandombeta has some more features, and for now is locked to CMajor for frequencies to produce some better sounding overall sound with lots of moons and planets. 
+
+I plan on forcing in a scale selection option soon so it can also only pull from certain scales for sounds. Interesting stuff.
