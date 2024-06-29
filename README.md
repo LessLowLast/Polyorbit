@@ -11,3 +11,8 @@ Clone anywhere or download the polyorbit folder, or, just download demoini.py an
 generaterandombeta has some more features, and for now is locked to CMajor for frequencies to produce some better sounding overall sound with lots of moons and planets. 
 
 I plan on forcing in a scale selection option soon so it can also only pull from certain scales for sounds. Interesting stuff.
+
+
+To run the beta, you only need the beta generator found in the PolyOrbit folder. 
+
+To run the alpha, which includes elliptical orbit generation, and a speed mult (1-5, the base speed is 480, this is a multiplier to that number), you need both demoinialpha, and generaterandomalpha.py from the root. the commands should be appropriately replaced.
