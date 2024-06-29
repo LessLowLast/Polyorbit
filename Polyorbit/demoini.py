@@ -8,9 +8,9 @@ import configparser
 pygame.init()
 
 # Screen setup
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1280, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Lucid Rhythms")
+pygame.display.set_caption("Polyorbit")
 
 # Colors
 BLACK = (0, 0, 0)
@@ -21,7 +21,7 @@ RED = (255, 0, 0)
 
 # Orbit setup
 CENTER = (WIDTH // 2, HEIGHT // 2)
-GLOBAL_SPEED_MULTIPLIER = 120.0
+GLOBAL_SPEED_MULTIPLIER = 480.0
 
 # Pyo server setup
 s = Server().boot()
