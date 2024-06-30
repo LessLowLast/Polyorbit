@@ -16,3 +16,9 @@ I plan on forcing in a scale selection option soon so it can also only pull from
 To run the beta, you only need the beta generator found in the PolyOrbit folder. 
 
 To run the alpha, which includes elliptical orbit generation, and a speed mult (1-5, the base speed is 480, this is a multiplier to that number), you need both demoinialpha, and generaterandomalpha.py from the root. the commands should be appropriately replaced.
+
+For the newest alpha you will also need to run...
+
+pip install pygame_gui
+
+... or it probably wont launch. 
