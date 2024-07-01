@@ -6,6 +6,7 @@ import configparser
 import glob
 import pygame_gui
 import random
+from pygame_gui.elements import UIPanel, UILabel, UIButton, UIHorizontalSlider
 
 # Initialize Pygame
 pygame.init()
@@ -67,7 +68,7 @@ def get_frequency_in_scale(size, is_planet, has_moons, scale):
     return scale_frequencies[min(max(index, 0), len(scale_frequencies) - 1)]
 
 class CelestialBody:
-    def __init__(self, radius, size, frequency, eccentricity, orbit_angle, sound_file=None):
+    def __init__(self, radius, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file=None):
         self.radius = radius
         self.size = size
         self.angle = 0
@@ -79,8 +80,7 @@ class CelestialBody:
             self.sound = SfPlayer(sound_file, loop=False)
         else:
             self.sound = Sine(freq=frequency, mul=0.3)
-        max_sustain = 0.5
-        self.env = Adsr(attack=0.01, decay=size/100, sustain=min(size/200, max_sustain), release=0.5, dur=size/10, mul=self.sound.mul)
+        self.env = Adsr(attack=0.01, decay=size/100, sustain=min(size/200, sustain_release_time), release=sustain_release_time, dur=size/10, mul=self.sound.mul)
         self.sound.mul = self.env
         self.sound.out()
         self.last_x = CENTER[0] + radius
@@ -117,8 +117,8 @@ class CelestialBody:
         pygame.draw.circle(screen, color, (x, y), int(max(self.size * zoom_level, 1)))
 
 class Planet(CelestialBody):
-    def __init__(self, radius, size, frequency, eccentricity, orbit_angle, sound_file=None):
-        super().__init__(radius, size, frequency, eccentricity, orbit_angle, sound_file)
+    def __init__(self, radius, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file=None):
+        super().__init__(radius, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file)
         self.moons = []
 
     def add_moon(self, moon):
@@ -135,8 +135,8 @@ class Planet(CelestialBody):
             moon.draw(zoom_level)
 
 class Moon(CelestialBody):
-    def __init__(self, planet, distance, size, frequency, eccentricity, orbit_angle, sound_file=None):
-        super().__init__(distance, size, frequency, eccentricity, orbit_angle, sound_file)
+    def __init__(self, planet, distance, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file=None):
+        super().__init__(distance, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file)
         self.planet = planet
 
     def calculate_position(self):
@@ -158,7 +158,7 @@ class Moon(CelestialBody):
         
         pygame.draw.circle(screen, BLUE, (x, y), int(max(self.size * zoom_level, 1)))
 
-def load_settings(file):
+def load_settings(file, SUSTAIN_RELEASE_TIME):
     config = configparser.ConfigParser()
     config.read(file)
     
@@ -166,6 +166,7 @@ def load_settings(file):
     
     global_settings = config['Global']
     speed_multiplier = float(global_settings['SpeedMultiplier'])
+    sustain_release_time = float(global_settings.get('SustainReleaseTime', SUSTAIN_RELEASE_TIME))
     elliptical_orbits = global_settings.getboolean('EllipticalOrbits')
     
     num_planets = int(global_settings['NumberOfPlanets'])
@@ -180,7 +181,7 @@ def load_settings(file):
         sound_file = config[section].get('SoundFile', '').strip()
         num_moons = int(config[section]['NumberOfMoons'])
         
-        planet = Planet(distance, size, frequency, eccentricity, orbit_angle, sound_file if sound_file else None)
+        planet = Planet(distance, size, frequency, eccentricity, orbit_angle, sustain_release_time, sound_file if sound_file else None)
         planet.angle = 0  # Reset the starting angle
         
         for j in range(1, num_moons + 1):
@@ -193,13 +194,13 @@ def load_settings(file):
             moon_sound_file = config[moon_section].get('SoundFile', '').strip()
             
             moon = Moon(planet, moon_distance, moon_size, moon_frequency, moon_eccentricity, moon_orbit_angle, 
-                        moon_sound_file if moon_sound_file else None)
+                        sustain_release_time, moon_sound_file if moon_sound_file else None)
             moon.angle = 0  # Reset moon starting angle
             planet.add_moon(moon)
         
         planets.append(planet)
     
-    return planets, speed_multiplier
+    return planets, speed_multiplier, sustain_release_time
 
 def open_settings_gui(manager, distance):
     settings_window = pygame_gui.elements.UIWindow(
@@ -209,29 +210,29 @@ def open_settings_gui(manager, distance):
     )
     
     y_offset = 10
-    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Size:", manager, container=settings_window)
+    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Size:", manager=manager, container=settings_window)
     y_offset += 30
-    size_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager, container=settings_window)
+    size_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager=manager, container=settings_window)
     size_entry.set_text("20")  # Default size
     y_offset += 40
     
-    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), f"Distance: {distance}", manager, container=settings_window)
+    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), f"Distance: {distance}", manager=manager, container=settings_window)
     y_offset += 40
     
-    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Eccentricity:", manager, container=settings_window)
+    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Eccentricity:", manager=manager, container=settings_window)
     y_offset += 30
-    eccentricity_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager, container=settings_window)
+    eccentricity_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager=manager, container=settings_window)
     eccentricity_entry.set_text("0.0")  # Default eccentricity
     y_offset += 40
     
-    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Scale:", manager, container=settings_window)
+    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Scale:", manager=manager, container=settings_window)
     y_offset += 30
-    scale_dropdown = pygame_gui.elements.UIDropDownMenu(list(SCALES.keys()), "C Major", pygame.Rect(10, y_offset, 280, 30), manager, container=settings_window)
+    scale_dropdown = pygame_gui.elements.UIDropDownMenu(list(SCALES.keys()), "C Major", pygame.Rect(10, y_offset, 280, 30), manager=manager, container=settings_window)
     y_offset += 40
     
-    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Number of Moons:", manager, container=settings_window)
+    pygame_gui.elements.UILabel(pygame.Rect(10, y_offset, 280, 30), "Number of Moons:", manager=manager, container=settings_window)
     y_offset += 30
-    moon_count_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager, container=settings_window)
+    moon_count_entry = pygame_gui.elements.UITextEntryLine(pygame.Rect(10, y_offset, 280, 30), manager=manager, container=settings_window)
     moon_count_entry.set_text("0")
     y_offset += 40
 
@@ -244,7 +245,7 @@ def open_settings_gui(manager, distance):
     
     return settings_window, size_entry, eccentricity_entry, scale_dropdown, moon_count_entry, confirm_button
 
-def create_new_orbit(settings, planets):
+def create_new_orbit(settings, planets, SUSTAIN_RELEASE_TIME):
     size = int(settings['size'])
     distance = int(settings['distance'])
     eccentricity = float(settings['eccentricity'])
@@ -253,14 +254,12 @@ def create_new_orbit(settings, planets):
     moon_count = int(settings['moon_count'])
 
     frequency = get_frequency_in_scale(size, True, moon_count > 0, scale)
-    new_planet = Planet(distance, size, frequency, eccentricity, orbit_angle)
+    new_planet = Planet(distance, size, frequency, eccentricity, orbit_angle, SUSTAIN_RELEASE_TIME)
     
     if moon_count > 0:
-        # Define the range for moon distances
         min_moon_distance = size + 10
         max_moon_distance = min(distance // 2, size + 100)
         
-        # Generate a list of moon distances, ensuring they're spaced out
         moon_distances = []
         for i in range(moon_count):
             if i == 0:
@@ -269,24 +268,25 @@ def create_new_orbit(settings, planets):
                 moon_distances.append(random.randint(moon_distances[-1] + 10, moon_distances[-1] + (max_moon_distance - min_moon_distance) // moon_count))
         
         for moon_distance in moon_distances:
-            moon_size = random.randint(1, min(15, size // 2))  # Ensure moons are smaller than the planet
+            moon_size = random.randint(1, min(15, size // 2))
             moon_frequency = get_frequency_in_scale(moon_size, False, False, scale)
             moon_eccentricity = random.uniform(0, eccentricity)
             moon_orbit_angle = random.uniform(0, 2 * math.pi)
-            new_moon = Moon(new_planet, moon_distance, moon_size, moon_frequency, moon_eccentricity, moon_orbit_angle)
+            new_moon = Moon(new_planet, moon_distance, moon_size, moon_frequency, moon_eccentricity, moon_orbit_angle, SUSTAIN_RELEASE_TIME)
             new_planet.add_moon(new_moon)
 
     planets.append(new_planet)
     return new_planet
 
-def update_settings_file(filename, planets, GLOBAL_SPEED_MULTIPLIER, elliptical_orbits):
+def update_settings_file(filename, planets, GLOBAL_SPEED_MULTIPLIER, elliptical_orbits, SUSTAIN_RELEASE_TIME):
     config = configparser.ConfigParser()
     config['Global'] = {
         'NumberOfPlanets': str(len(planets)),
         'SpeedMultiplier': str(GLOBAL_SPEED_MULTIPLIER),
         'EllipticalOrbits': str(elliptical_orbits).lower(),
         'MaxEccentricity': '0.99',
-        'SelectedScale': 'C Major'  # You might want to track the selected scale globally
+        'SelectedScale': 'C Major',
+        'SustainReleaseTime': str(SUSTAIN_RELEASE_TIME)
     }
     
     for i, planet in enumerate(planets, 1):
@@ -315,8 +315,76 @@ def update_settings_file(filename, planets, GLOBAL_SPEED_MULTIPLIER, elliptical_
     with open(filename, 'w') as configfile:
         config.write(configfile)
 
+def create_adjustments_panel(manager):
+    panel = UIPanel(pygame.Rect(WIDTH - 250, 50, 240, 200), 
+                    manager=manager)
+    
+    UILabel(pygame.Rect(10, 10, 220, 30), "Global Speed Multiplier", manager=manager, container=panel)
+    speed_slider = UIHorizontalSlider(pygame.Rect(10, 40, 220, 20), 
+                                      GLOBAL_SPEED_MULTIPLIER, (0.1, 10.0), manager=manager, container=panel)
+    
+    UILabel(pygame.Rect(10, 70, 220, 30), "Sustain/Release Time", manager=manager, container=panel)
+    sustain_release_slider = UIHorizontalSlider(pygame.Rect(10, 100, 220, 20), 
+                                                SUSTAIN_RELEASE_TIME, (0.1, 2.0), manager=manager, container=panel)
+    
+    return panel, speed_slider, sustain_release_slider
+
+def create_planet_info_popup(manager, planet, planet_index):
+    popup = UIPanel(pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 150, 300, 300), 
+                    manager=manager)
+    
+    y_offset = 10
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Planet {planet_index + 1}", manager=manager, container=popup)
+    y_offset += 30
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Size: {planet.size}", manager=manager, container=popup)
+    y_offset += 30
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Distance: {planet.radius}", manager=manager, container=popup)
+    y_offset += 30
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Frequency: {planet.frequency:.2f}", manager=manager, container=popup)
+    y_offset += 30
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Eccentricity: {planet.eccentricity:.4f}", manager=manager, container=popup)
+    y_offset += 30
+    UILabel(pygame.Rect(10, y_offset, 280, 30), f"Number of Moons: {len(planet.moons)}", manager=manager, container=popup)
+    y_offset += 40
+    
+    delete_button = UIButton(pygame.Rect(10, y_offset, 280, 30), 
+                             "Delete Planet", 
+                             manager=manager, 
+                             container=popup)
+    
+    close_button = UIButton(pygame.Rect(270, 10, 20, 20), 
+                            "X", 
+                            manager=manager, 
+                            container=popup)
+    
+    return popup, delete_button, close_button
+
+def update_settings_ini(filename, global_speed_multiplier, sustain_release_time):
+    config = configparser.ConfigParser()
+    config.read(filename)
+    
+    if 'Global' not in config:
+        config['Global'] = {}
+    
+    config['Global']['SpeedMultiplier'] = str(global_speed_multiplier)
+    config['Global']['SustainReleaseTime'] = str(sustain_release_time)
+    
+    with open(filename, 'w') as configfile:
+        config.write(configfile)
+
+def draw_edit_mode_text(screen, time):
+    font = pygame.font.Font(None, 36)
+    text = font.render("Edit Mode", True, (255, 255, 0))
+    alpha = int(127 + 127 * math.sin(time * 5))  # Pulsing effect
+    text.set_alpha(alpha)
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT - 30))
+    screen.blit(text, text_rect)
+
+# Initialize SUSTAIN_RELEASE_TIME with a default value
+SUSTAIN_RELEASE_TIME = 0.5
+
 # Load planets from settings.ini
-planets, GLOBAL_SPEED_MULTIPLIER = load_settings('settings.ini')
+planets, GLOBAL_SPEED_MULTIPLIER, SUSTAIN_RELEASE_TIME = load_settings('settings.ini', SUSTAIN_RELEASE_TIME)
 
 # GUI setup
 manager = pygame_gui.UIManager((WIDTH, HEIGHT))
@@ -337,6 +405,11 @@ record_button = pygame_gui.elements.UIButton(
     manager=manager
 )
 
+# Add adjustments panel
+adjustments_panel, speed_slider, sustain_release_slider = create_adjustments_panel(manager)
+speed_slider.set_current_value(GLOBAL_SPEED_MULTIPLIER)
+sustain_release_slider.set_current_value(SUSTAIN_RELEASE_TIME)
+
 # Recording variables
 is_recording = False
 record_start_time = 0
@@ -356,18 +429,26 @@ def stop_recording():
     s.recstop()
     record_counter += 1
 
+# Global variables
 running = True
-clock = pygame.time.Clock()
+clock = pygame.Clock()
 zoom_level = 1.0
 min_zoom = 0.01
 max_zoom = 10.0
 paused = False
+edit_mode = False
 adding_orbit = False
 new_orbit_settings = None
 initial_click_pos = None
+selected_planet = None
+planet_info_popup = None
+delete_button = None
+close_button = None
+pulse_time = 0
 
 while running:
     time_delta = clock.tick(60) / 1000.0
+    pulse_time += time_delta
     
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -379,18 +460,40 @@ while running:
             elif event.button == 5:  # Scroll down
                 zoom_level /= 1.1
                 zoom_level = max(zoom_level, min_zoom)
-            elif event.button == 1 and paused and not adding_orbit:  # Left click
-                initial_click_pos = event.pos
-                adding_orbit = True
-                distance = int(math.hypot(initial_click_pos[0] - CENTER[0], initial_click_pos[1] - CENTER[1]) / zoom_level)
-                new_orbit_settings, size_entry, eccentricity_entry, scale_dropdown, moon_count_entry, confirm_button = open_settings_gui(manager, distance)
+            elif event.button == 1:  # Left click
+                mouse_pos = pygame.mouse.get_pos()
+                for i, planet in enumerate(planets):
+                    planet_pos = planet.calculate_position()
+                    scaled_pos = ((planet_pos[0] - CENTER[0]) * zoom_level + CENTER[0],
+                                  (planet_pos[1] - CENTER[1]) * zoom_level + CENTER[1])
+                    distance = math.hypot(mouse_pos[0] - scaled_pos[0], mouse_pos[1] - scaled_pos[1])
+                    if distance <= planet.size * zoom_level:
+                        selected_planet = planet
+                        if planet_info_popup:
+                            planet_info_popup.kill()
+                        planet_info_popup, delete_button, close_button = create_planet_info_popup(manager, planet, i)
+                        break
+                else:
+                    if edit_mode and not adding_orbit:
+                        initial_click_pos = event.pos
+                        adding_orbit = True
+                        distance = int(math.hypot(initial_click_pos[0] - CENTER[0], initial_click_pos[1] - CENTER[1]) / zoom_level)
+                        new_orbit_settings, size_entry, eccentricity_entry, scale_dropdown, moon_count_entry, confirm_button = open_settings_gui(manager, distance)
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 paused = not paused
+                edit_mode = paused
+                if not edit_mode:
+                    adding_orbit = False
+                    if new_orbit_settings:
+                        new_orbit_settings.kill()
+                    update_settings_file('settings.ini', planets, GLOBAL_SPEED_MULTIPLIER, True, SUSTAIN_RELEASE_TIME)
         elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             if event.ui_element == dropdown:
                 selected_file = event.text
-                planets, GLOBAL_SPEED_MULTIPLIER = load_settings(selected_file)
+                planets, GLOBAL_SPEED_MULTIPLIER, SUSTAIN_RELEASE_TIME = load_settings(selected_file, SUSTAIN_RELEASE_TIME)
+                speed_slider.set_current_value(GLOBAL_SPEED_MULTIPLIER)
+                sustain_release_slider.set_current_value(SUSTAIN_RELEASE_TIME)
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == record_button:
                 if is_recording:
@@ -407,30 +510,57 @@ while running:
                     'scale': scale_dropdown.selected_option,
                     'moon_count': moon_count_entry.get_text()
                 }
-                new_orbit = create_new_orbit(new_settings, planets)
+                new_planet = create_new_orbit(new_settings, planets, SUSTAIN_RELEASE_TIME)
+                dx = initial_click_pos[0] - CENTER[0]
+                dy = initial_click_pos[1] - CENTER[1]
+                new_planet.angle = math.atan2(dy, dx) - new_planet.orbit_angle
                 adding_orbit = False
                 new_orbit_settings.kill()
-                update_settings_file('settings.ini', planets, GLOBAL_SPEED_MULTIPLIER, True)
-                paused = False  # Resume the simulation
-                initial_click_pos = None
+            elif delete_button and event.ui_element == delete_button:
+                planets.remove(selected_planet)
+                if planet_info_popup:
+                    planet_info_popup.kill()
+                selected_planet = None
+                delete_button = None
+                close_button = None
+                update_settings_file('settings.ini', planets, GLOBAL_SPEED_MULTIPLIER, True, SUSTAIN_RELEASE_TIME)
+            elif close_button and event.ui_element == close_button:
+                if planet_info_popup:
+                    planet_info_popup.kill()
+                selected_planet = None
+                delete_button = None
+                close_button = None
+        elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+            if event.ui_element == speed_slider:
+                GLOBAL_SPEED_MULTIPLIER = event.value
+            elif event.ui_element == sustain_release_slider:
+                SUSTAIN_RELEASE_TIME = event.value
+                for planet in planets:
+                    planet.env.sustain = min(planet.size/200, SUSTAIN_RELEASE_TIME)
+                    planet.env.release = SUSTAIN_RELEASE_TIME
+                    for moon in planet.moons:
+                        moon.env.sustain = min(moon.size/200, SUSTAIN_RELEASE_TIME)
+                        moon.env.release = SUSTAIN_RELEASE_TIME
+            update_settings_ini('settings.ini', GLOBAL_SPEED_MULTIPLIER, SUSTAIN_RELEASE_TIME)
 
         manager.process_events(event)
 
     manager.update(time_delta)
 
-    if is_recording:
-        current_time = pygame.time.get_ticks()
-        if current_time - record_start_time >= RECORDING_DURATION:
-            stop_recording()
-            start_recording()
+    if not paused:
+        if is_recording:
+            current_time = pygame.time.get_ticks()
+            if current_time - record_start_time >= RECORDING_DURATION:
+                stop_recording()
+                start_recording()
 
     screen.fill(BLACK)
 
     # Draw the middle line
     pygame.draw.line(screen, RED, (CENTER[0], 0), (CENTER[0], HEIGHT), 1)
 
-    # Draw orbit preview when paused
-    if paused and not adding_orbit:
+    # Draw orbit preview when in edit mode
+    if edit_mode and not adding_orbit:
         preview_color = WHITE
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
@@ -478,6 +608,10 @@ while running:
 
     # Draw center
     pygame.draw.circle(screen, WHITE, CENTER, 5)
+
+    # Draw "Edit Mode" text when paused
+    if edit_mode:
+        draw_edit_mode_text(screen, pulse_time)
 
     # Update button color based on recording state
     if is_recording:
