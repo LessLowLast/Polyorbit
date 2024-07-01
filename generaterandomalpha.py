@@ -2,7 +2,7 @@ import configparser
 import random
 import math
 
-# Extended dictionary of scales
+# Define scales (3 octaves each where applicable)
 SCALES = {
     "C Major": [131, 147, 165, 175, 196, 220, 247, 261, 293, 329, 349, 392, 440, 493, 523, 587, 659, 698, 784, 880, 987],
     "C Natural Minor": [131, 147, 156, 175, 196, 208, 247, 261, 293, 311, 349, 392, 415, 493, 523, 587, 622, 698, 784, 831, 987],
@@ -85,14 +85,14 @@ def get_frequency_in_key(size, is_planet, has_moons, scale):
     if is_planet:
         inverted_size = 50 - size + 20
         if has_moons:
-            index = (inverted_size - 20) * len(scale_frequencies) // 30
+            index = (inverted_size - 20) * 14 // 30
         else:
-            index = ((inverted_size - 20) * len(scale_frequencies) // 30) + len(scale_frequencies) // 2
+            index = ((inverted_size - 20) * 14 // 30) + 7
         return scale_frequencies[min(max(index, 0), len(scale_frequencies) - 1)]
     else:
         inverted_size = 16 - size
-        index = ((inverted_size - 1) * (len(scale_frequencies) // 2) // 14) + len(scale_frequencies) // 2
-        return scale_frequencies[min(max(index, len(scale_frequencies) // 2), len(scale_frequencies) - 1)]
+        index = ((inverted_size - 1) * 7 // 14) + 14
+        return scale_frequencies[min(max(index, 14), len(scale_frequencies) - 1)]
 
 def generate_random_settings(file_name='settings.ini'):
     (min_planets, max_planets, min_moons, max_moons, min_center_distance, 
